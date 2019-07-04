@@ -1,2 +1,2 @@
 # Evolutionary
-Evolutionry algorithm of governing equation discovery
+Evolutionary algorithm of governing equation discovery
