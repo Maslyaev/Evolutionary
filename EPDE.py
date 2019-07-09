@@ -11,7 +11,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 
 
-def Slice_Data_3D(matrix, part = 4, part_tuple = None):     # Input matrix slicing for separate domain calculation
+def Slice_Data_3D(matrix, part = 4, part_tuple = None):    
+    '''
+    Input matrix slicing for separate domain calculation
+    '''
     if part_tuple:
         for i in range(part_tuple[0]):
             for j in range(part_tuple[1]):
@@ -57,7 +60,10 @@ def Visualize(V_vis, angle = (40, 60), labels = ('$X$', '$T$', '$U$'), colormap 
     plt.show()
 
 
-def Add_noise(V_matrix, part): # Addition of noise for the stability test: designed for 1D - case
+def Add_noise(V_matrix, part): 
+    '''
+    Addition of noise for the stability test: designed for 1D - case
+    '''
     V_noised = np.copy(V_matrix)
     for idx1 in range(V_matrix.shape[0]):
         max_value = V_matrix[idx1][:].max()
@@ -67,16 +73,21 @@ def Add_noise(V_matrix, part): # Addition of noise for the stability test: desig
     return V_noised, noise_lvl
 
 
-def Chebyshev_grid(a, b, n):    # Calculation of grid by roots of Chebyshev polynominals for 1D - case
+def Chebyshev_grid(a, b, n):   
+    ''' 
+    Calculation of grid by roots of Chebyshev polynominals for 1D - case
+    '''
     nodes = np.zeros(n)
     nodes = list(map(lambda x: (b+a)/2. + (b-a)/2.*math.cos(math.pi*(2*x - 1)/(2*n)), range(1, n+1)))
     nodes = np.fliplr([nodes])[0]
     return nodes
 
 
-def PolyDiff(u, x, deg = 3, diff = 1, width = 5): # Polynomial differentiation, adapted only for 1D - process
+def PolyDiff(u, x, deg = 3, diff = 1, width = 5): 
     
-    """
+    """ 
+    Polynomial differentiation, adapted only for 1D - process
+    
     u = values of some function
     x = x-coordinates where values are known
     deg = degree of polynomial to use
@@ -117,7 +128,10 @@ def PolyDiff(u, x, deg = 3, diff = 1, width = 5): # Polynomial differentiation, 
     return np.transpose(du)
 
 
-def matrix_derivative_poly(U,a,b,dx,deg = 5, diff = 1, width = 6, cheb_grid = False): # Polynomial differentiation, adapted only for 1D - process
+def matrix_derivative_poly(U,a,b,dx,deg = 5, diff = 1, width = 6, cheb_grid = False):
+    '''
+    Polynomial differentiation, adapted only for 1D - process
+    '''
     if cheb_grid:
         x=np.array(Chebyshev_grid(a, b, int((b-a)/float(dx)))) 
         #np.loadtxt(open("filename.csv", "rb"), delimiter=",", skiprows=0)
@@ -136,7 +150,10 @@ def matrix_derivative_poly(U,a,b,dx,deg = 5, diff = 1, width = 6, cheb_grid = Fa
     return mat_der
 
 
-def Differentiate_by_Matrix(U_input, var_index, step, order): # Differentiation of data: order =< 3
+def Differentiate_by_Matrix(U_input, var_index, step, order): 
+    '''
+    Differentiation of data: order =< 3
+    '''
     if order == 1:
         left = tf.Variable((-1/(2*float(step)))*np.roll(U_input,shift=1,axis=var_index), name="matrix_left")
         right = tf.Variable((1/(2*float(step)))*np.roll(U_input,shift=-1,axis=var_index), name="matrix_right")
@@ -164,9 +181,11 @@ def Differentiate_by_Matrix(U_input, var_index, step, order): # Differentiation 
     return der
 
 
-def Create_Var_Matrices_gen(U_input, method = 'FDM', steps = (1, 1), max_order = 3): # Generator of derivatives matrixes
+def Create_Var_Matrices_gen(U_input, method = 'FDM', steps = (1, 1), max_order = 3):
+    '''
+    Generator of derivatives matrixes
+    '''
     var_names = ['1', 'u']
-
     for var_idx in range(U_input.ndim):
         for order in range(max_order):
             if order == 0:
@@ -183,7 +202,10 @@ def Create_Var_Matrices_gen(U_input, method = 'FDM', steps = (1, 1), max_order =
             yield Differentiate_by_Matrix(U_input, var_index = var_idx, step = steps[var_idx], order = var_order+1), var_names[2 + var_order + max_order * var_idx] # Использовать остаток
 
 
-def norm_time_series(Input):    # Normalization of data time-frame
+def norm_time_series(Input):
+    '''
+    Normalization of data time-frame
+    '''
     Matrix = np.copy(Input)
     for i in range(Matrix.shape[0]):
         norm  = abs(np.max(abs(Matrix[i, :])))
@@ -194,7 +216,10 @@ def norm_time_series(Input):    # Normalization of data time-frame
     return Matrix
 
 
-def Create_term_by_dict(variables, variables_names, term_label): # Get matrix of term values from symbolic form
+def Create_term_by_dict(variables, variables_names, term_label): 
+    ''' 
+    Get matrix of term values from symbolic form
+    '''
     term = np.copy(variables[0]) 
     for key, value in term_label.items():
         term *= variables[variables_names.index(key)] ** value
@@ -202,7 +227,10 @@ def Create_term_by_dict(variables, variables_names, term_label): # Get matrix of
 
 
 def Create_term(variables, variables_names, max_factors_in_term = 2,
-                term_type = 'Random', target_term = None):  # Create term: matrix & symbolic form 
+                term_type = 'Random', target_term = None):  
+    '''
+    Create term: matrix & symbolic form 
+    '''
     if term_type == 'Random':
         factors_in_term = np.random.randint(low = 0, high = max_factors_in_term)
         term = np.copy(variables[0])
@@ -238,14 +266,12 @@ class chromosome:
     def __init__(self, variables, variables_names, terms_number = 6, max_factors_in_term = 2): 
 
         """
-
         Initiation of individual for evolutionary algorithm:
             
         variables = list of derivatives values of various orders;
         variables_names = list of symbolic forms of derivatives;
         terms_number = max number of terms in the discovered equation
         max_factors_in_term = max number of factors, that can form a term (e.g. with 2: df/dx_1 * df/dx_2)
-
         """
         self.variables = variables; self.variables_names = variables_names
         self.terms = []
@@ -277,11 +303,17 @@ class chromosome:
             self.terms[i] = np.reshape(self.terms[i], np.prod(self.terms[i].shape))
         
 
-    def Apply_ML(self, estimator_type = 'Lasso', alpha = 0.001): # Apply estimator to get weights of the equation
+    def Apply_ML(self, estimator_type = 'Lasso', alpha = 0.001): 
+        '''
+        Apply estimator to get weights of the equation
+        '''
         self.Fit_estimator(estimator_type = estimator_type, alpha = alpha)
 
     
-    def Calculate_Fitness(self): # Calculation of fitness function as the inverse value of L2 norm of error
+    def Calculate_Fitness(self): 
+        '''
+        Calculation of fitness function as the inverse value of L2 norm of error
+        '''
         self.fitness_value = 1 / (np.linalg.norm(np.dot(self.features, self.weights) - self.target, ord = 2)) 
         return self.fitness_value
 
@@ -289,9 +321,7 @@ class chromosome:
     def Split_data(self): 
         
         '''
-        
         Separation of target term from features & removal of factors, that are in target, from features
-        
         '''
         
         self.features_keys = []
@@ -322,10 +352,8 @@ class chromosome:
     def Remove_Dublicated_Factors(self, term, term_label):
         
         '''
-        
         Replace factors, present in target term; 
         if can not create unique terms - addition of one more random factor
-        
         '''
         
         list_copy = [label for label in self.terms_label if label != term_label]
@@ -353,7 +381,10 @@ class chromosome:
         return Create_term_by_dict(self.variables, self.variables_names, resulting_term_label), resulting_term_label
 
             
-    def Fit_estimator(self, estimator_type = 'Ridge', alpha = 0.001): # Fitting selected estimator
+    def Fit_estimator(self, estimator_type = 'Ridge', alpha = 0.001): 
+        '''
+        Fitting selected estimator
+        '''
         if estimator_type == 'Lasso':
             self.estimator = Lasso(alpha = alpha)
             self.estimator.fit(self.features, self.target) 
@@ -365,7 +396,10 @@ class chromosome:
             self.estimator.fit(self.features, self.target) 
         self.weights = self.estimator.coef_
     
-    def Term_Mutation(self, term, term_label, reverse_mutation_probability = 0.1): # Mutation of population individual           
+    def Term_Mutation(self, term, term_label, reverse_mutation_probability = 0.1):
+        '''
+        Mutation of population individual           
+        '''
         if len(term_label) == 1:
             new_key = np.random.choice(self.free_keys)
             term_label[new_key] = 1
@@ -420,16 +454,33 @@ class chromosome:
                 
 # --------------------------------------------------------------------------------------------------------------------
     
-def Check_Unqueness(term, prev_terms):  # Check if term is unique in the chromosome
+def Check_Unqueness(term, prev_terms):  
+    '''
+    Check if term is unique in the chromosome
+    '''
     for prev in prev_terms:
         if term ==prev:
             return False 
     return True
 
+def Penalize_Empty_Equation(individual, average_fitness, penalty_factor = 1):
+    '''
+    Penalize fitness function for equations, where single target term is equaled to 0
+    '''
+    if np.sum(pow(individual.weights, 2)) == 0: 
+        individual.fitness_value -= penalty_factor * average_fitness
+        
     
-def Population_Sort(input_popuation): # Sort population in decreasing order by fitness function value
-    output_population = input_popuation
-    
+def Population_Sort(input_popuation):
+    '''
+    Sort population in decreasing order by fitness function value
+    '''
+    average_fitness = float(sum([individual.fitness_value for individual in input_popuation])) / len(input_popuation)
+    for individual in input_popuation:
+        Penalize_Empty_Equation(individual, average_fitness = average_fitness, penalty_factor = 3)
+        
+    output_population = input_popuation        
+        
     for j in range(1, len(output_population)):
         key_chromosome = output_population[j]
         i = j - 1        
@@ -442,14 +493,10 @@ def Population_Sort(input_popuation): # Sort population in decreasing order by f
 
 
 def Crossover(chromosome_1, chromosome_2, variables, variables_names, crossover_probability = 0.1):
-    
     '''
-    
     Crossover between two individuals of population: returns 2 new individuals, that are recombination of 
     their parents' genes
-    
     '''
-    
     if len(chromosome_1.terms_label) != len(chromosome_2.terms_label):
         raise IndexError('Chromosomes have different number of genes')
     
@@ -474,8 +521,12 @@ def Crossover(chromosome_1, chromosome_2, variables, variables_names, crossover_
 
 
 def Parent_selection_for_crossover(population, k_parameter = 0.75):
+    '''
+    Random selection of parents for crossover
+    '''
     selection_indexes = np.random.choice(len(population), 2)
-    selection = list(map(lambda x: population[x], selection_indexes)) 
+    #selection = list(map(lambda x: population[x], selection_indexes)) 
+    selection = [population[x] for x in selection_indexes]
     
     if selection[1].fitness_value > selection[0].fitness_value:
         temp = selection[1]; selection[1] = selection[0]; selection[0] = temp
@@ -491,6 +542,10 @@ def Parent_selection_for_crossover(population, k_parameter = 0.75):
 
 def Tournament_crossover(population, part_with_offsprings, variables, variables_names, 
                          k_parameter = 0.75, crossover_probability = 0.1):
+    '''
+    Tournament crossover: selection of two parents done by relative fitness, giving chances to mid-valued 
+    individuals to have offsprings;
+    '''
     children = []
     for i in range(int(len(population)*part_with_offsprings)):
         parent_1, parent_1_idx = Parent_selection_for_crossover(population, k_parameter)
@@ -503,8 +558,25 @@ def Tournament_crossover(population, part_with_offsprings, variables, variables_
 
     
 def Genetic_iteration(iter_num, population, part_with_offsprings, crossover_probability, mutation_probability, 
-                      variables, variables_names, estimator_type = 'Ridge', alpha = 0.001):
+                      variables, variables_names, estimator_type = 'Lasso', alpha = 0.001):
+    '''
+    Iterations of the evolutionary algorithm. Workflow:
+        
+    Apply sparse regression -> calculate fitness function for each individual & sort population by its value -> 
+    run crossover (tournament selection) & mutation -> division of terms into features and target for newly 
+    created terms
     
+    Parameters:
+        
+    iter_num = index of the iteration;
+    population = population of chromosomes, which represent equation structures;
+    crossover_probability = probability of gene exchange between individuals in chromosomes during crossover;
+    mutation_probability = probability of gene change in chromosome during mutation;
+    variables = list of matrixes, containing matrix of ones, input data & its derivatives;
+    variables_names = symbolic names of function, including constant, input data & its derivatives;
+    estimator_type = type of estimator, used in regression: 'Lasso', 'Ridge', else - no sparsity;
+    alpha = sparsity constant
+    '''
     for chromo in population:
         chromo.Apply_ML(estimator_type = estimator_type, alpha = alpha)
         
@@ -523,6 +595,13 @@ def Genetic_iteration(iter_num, population, part_with_offsprings, crossover_prob
 
 
 def Get_true_coeffs(variables, variables_names, eq_final_form):
+    '''
+    Calculation of true weights of the coefficients, using linear regression over terms with non-zero weights;
+    
+    variables = list of matrixes, containing matrix of ones, input data & its derivatives;
+    variables_names = symbolic names of function, including constant, input data & its derivatives;
+    eq_final_form = chromosome with highest fitness value, obtained by evolutionary algorithm; 
+    '''
     var_names = dict(zip(variables_names, variables))
     target_key = eq_final_form.target_key
     target_term = np.copy(variables[0])
