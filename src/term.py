@@ -17,7 +17,7 @@ def Check_Unqueness(term, equation):
     else:
         return not any([all(term == equation_term.gene) for equation_term in equation])
 
-def norm_time_series(Input):    # Normalization of data time-frame
+def normalize_ts(Input):    # Normalization of data time-frame
     Matrix = np.copy(Input)
     for i in np.arange(Matrix.shape[0]):
         norm  = np.abs(np.max(np.abs(Matrix[i, :])))
@@ -98,16 +98,13 @@ class Term:
                 addendum += 1
             self.gene[factor_choice_idx + addendum] = 1
        
-    def Calculate_Value(self, variables, normalize = True):
-        self.value = np.copy(variables[0])
-        #print('gene:', self.gene)
-        for var_idx in np.arange(self.max_power, self.gene.shape[0], self.max_power):
-            power = (np.sum(self.gene[var_idx : var_idx + self.max_power]))
-            #print(var_idx, power)
-            #print(int(var_idx / float(self.max_power)), int(power), self.tokens[int(var_idx / float(self.max_power))])
-            self.value *= variables[int(var_idx / float(self.max_power))] ** int(power)
-        if normalize: self.value = norm_time_series(self.value)
-        self.value = self.value.reshape(np.prod(self.value.shape))
+#    def Calculate_Value(self, variables, normalize = True):
+#        self.value = np.copy(variables[0])
+#        for var_idx in np.arange(self.max_power, self.gene.shape[0], self.max_power):
+#            power = (np.sum(self.gene[var_idx : var_idx + self.max_power]))
+#            self.value *= variables[int(var_idx / float(self.max_power))] ** int(power)
+#        if normalize: self.value = normalize_ts(self.value)
+#        self.value = self.value.reshape(np.prod(self.value.shape))
 
 
     def Remove_Dublicated_Factors(self, allowed_factors, background_terms):
@@ -122,7 +119,6 @@ class Term:
         
         max_power_elements = [idx for idx in range(len(self.tokens)) if self.gene[idx*self.max_power + self.max_power - 1] == 1]
         allowed = [factor for factor in allowed if not factor in max_power_elements]
-        #print(allowed)
         if self.max_power != 1:
             allowed.remove(0)
         
@@ -136,9 +132,6 @@ class Term:
                 gene_filled[selected_idx*self.max_power + addendum] = 1
                 if addendum == self.max_power - 1:
                     allowed.remove(selected_idx)
-            #print('filled:', self.gene, self.gene.size)
-            #print('cleared:', gene_cleared, gene_cleared.size)                    
-            #print('filled:', gene_filled, gene_filled.size)
             if Check_Unqueness(gene_filled, background_terms):
                 self.gene = gene_filled
                 break

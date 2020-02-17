@@ -9,6 +9,49 @@ Created on Thu Feb 13 16:33:34 2020
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
+
+
+def Slice_Data_3D(matrix, part = 4, part_tuple = None):     # Input matrix slicing for separate domain calculation
+    if part_tuple:
+        for i in range(part_tuple[0]):
+            for j in range(part_tuple[1]):
+                yield matrix[:, i*int(matrix.shape[1]/float(part_tuple[0])):(i+1)*int(matrix.shape[1]/float(part_tuple[0])), 
+                             j*int(matrix.shape[2]/float(part_tuple[1])):(j+1)*int(matrix.shape[2]/float(part_tuple[1]))], i, j   
+    part_dim = int(np.sqrt(part))
+    for i in range(part_dim):
+        for j in range(part_dim):
+            yield matrix[:, i*int(matrix.shape[1]/float(part_dim)):(i+1)*int(matrix.shape[1]/float(part_dim)), 
+                         j*int(matrix.shape[2]/float(part_dim)):(j+1)*int(matrix.shape[2]/float(part_dim))], i, j
+
+def Define_Derivatives(dimensionality, max_order = 2):
+    var_names = ['1', 'u']
+    for var_idx in range(dimensionality):
+        for order in range(max_order):
+            if order == 0:
+                var_names.append('du/dx'+str(var_idx+1))
+            else:
+                var_names.append('d^'+str(order+1)+'u/dx'+str(var_idx+1)+'^'+str(order+1))
+    return tuple(var_names)    
+
+def Create_Var_Matrices(U_input, max_order = 3):
+    var_names = ['1', 'u']
+
+    for var_idx in range(U_input.ndim):
+        for order in range(max_order):
+            if order == 0:
+                var_names.append('du/dx'+str(var_idx+1))
+            else:
+                var_names.append('d^'+str(order+1)+'u/dx'+str(var_idx+1)+'^'+str(order+1))
+
+    variables = np.ones((len(var_names),) + U_input.shape)      
+    return variables, tuple(var_names)
+
+
+def Prepare_Data_matrixes(raw_matrix, dim_info):
+    resulting_matrix = np.reshape(raw_matrix, dim_info)
+    return resulting_matrix 
+
+
 def Decode_Gene(gene, variables_names, max_power = 2):
     term_dict = {}
     for i in range(0, gene.shape[0], max_power):
@@ -17,6 +60,7 @@ def Decode_Gene(gene, variables_names, max_power = 2):
 
 
 def Encode_Gene(label_dict, variables_names, max_power = 2):
+#    print(type(variables_names), variables_names)
     gene = np.zeros(shape = len(variables_names) * max_power)
 
     for i in range(len(variables_names)):
@@ -39,46 +83,3 @@ def Population_Sort(input_popuation):
         output_population[i+1] = key_chromosome
         
     return list(reversed(output_population))
-
-
-def Get_true_coeffs(variables, variables_names, equation, max_power = 2):
-    target = equation.terms[equation.target_idx]
-    print('Target key:', Decode_Gene(target.gene, variables_names, max_power))
-    
-    target_vals = np.copy(variables[0])
-    for idx in range(0, target.gene.size, target.max_power):
-        target_vals *= variables[int(idx/target.max_power)] ** np.sum(target.gene[idx : idx + target.max_power])
-    target_vals = np.reshape(target_vals, np.prod(target_vals.shape))
-
-    features_list = []
-    features_list_labels = []
-    for i in range(len(equation.terms)):
-        if i == equation.target_idx:
-            continue
-        idx = i if i < equation.target_idx else i-1
-        if equation.weights[idx] != 0:
-            features_list_labels.append(Decode_Gene(equation.terms[i].gene, variables_names, max_power))
-            feature_vals = np.copy(variables[0])
-            
-            for gene_idx in range(0, equation.terms[i].gene.size, equation.terms[i].max_power):
-                feature_vals *= (variables[int(gene_idx/equation.terms[i].max_power)] ** 
-                                          np.sum(equation.terms[i].gene[gene_idx : gene_idx + equation.terms[i].max_power]))
-            
-            feature_vals = np.reshape(feature_vals, np.prod(feature_vals.shape))
-            features_list.append(feature_vals)
-
-    if len(features_list) == 0:
-        return Decode_Gene(target.gene, variables_names, max_power), [('0', 1)]
-    features = features_list[0]
-    if len(features_list) > 1:
-        for i in range(1, len(features_list)):
-            features = np.vstack([features, features_list[i]])
-    features = np.transpose(features)    
-    estimator = LinearRegression()
-    try:
-        estimator.fit(features, target_vals)
-    except ValueError:
-        features = features.reshape(-1, 1)
-        estimator.fit(features, target_vals)
-    weights = estimator.coef_
-    return Decode_Gene(target.gene, variables_names, max_power), list(zip(features_list_labels, weights))    

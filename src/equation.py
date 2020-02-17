@@ -12,8 +12,11 @@ from src.term import Term
 
 from src.term import Check_Unqueness
 
+def Evaluate_term(term, evaluator, eval_args):
+    return evaluator(term, eval_args)
+
 class Equation:
-    def __init__(self, tokens, evaluator, evaluator_args, terms_number = 6, max_factors_in_term = 2): 
+    def __init__(self, tokens, evaluator, eval_args, terms_number = 6, max_factors_in_term = 2, max_power = 2): 
 
         """
 
@@ -52,11 +55,11 @@ class Equation:
             Maximum number of factors, that can form a term (e.g. with 2: df/dx_1 * df/dx_2)
 
         """
-        
+
         self.tokens = tokens
-        self.evaluator = evaluator; self.evaluator_args = evaluator_args
+        self.evaluator = evaluator; self.eval_args = eval_args
         self.terms = []
-        self.terms_number = terms_number; self.max_factors_in_term = max_factors_in_term
+        self.terms_number = terms_number; self.max_factors_in_term = max_factors_in_term; self.max_power = max_power
         
         if (terms_number <= 5): 
             raise Exception('Number of terms ({}) is too low to contain all required ones'.format(terms_number))        
@@ -66,29 +69,29 @@ class Equation:
         
         for i in range(2, terms_number):
             print('creating term number', i)
-            new_term = Term(tokens_list=tokens, init_random = True, max_factors_in_term = self.max_factors_in_term)
-            #print('Term:', new_term.gene)
+            new_term = Term(tokens_list=tokens, init_random = True, max_factors_in_term = self.max_factors_in_term, max_power = self.max_power)
+
             while not Check_Unqueness(new_term, self.terms):
                 print('Generationg random term for idx:', i)
                 new_term = Term(tokens_list=tokens, init_random = True, max_factors_in_term = self.max_factors_in_term)
                 print(Check_Unqueness(new_term, self.terms), new_term.gene)
             self.terms.append(new_term)
 
-    @staticmethod
-    def Evaluate_term(term, evaluator, eval_args):
-        return evaluator(term, eval_args)
-
     def Evaluate_equation(self):
-        self.target = self.Evaluate_term(self.terms[self.target_idx], self.evaluator, self.eval_args)
+        if not 'max_power' in self.eval_args:
+            self.eval_args['max_power'] = self.max_power
+        self.target = Evaluate_term(self.terms[self.target_idx], self.evaluator, self.eval_args)
         
         for feat_idx in range(len(self.terms)):
             if feat_idx == 0:
-                self.features = self.Evaluate_term(self.terms[feat_idx], self.evaluator)
+                self.features = Evaluate_term(self.terms[feat_idx], self.evaluator, self.eval_args)
             elif feat_idx != 0 and self.target_idx != feat_idx:
-                temp = self.features = self.Evaluate_term(self.terms[feat_idx], self.evaluator)
+                temp = Evaluate_term(self.terms[feat_idx], self.evaluator, self.eval_args)
                 self.features = np.vstack([self.features, temp])
             else:
                 continue
+        self.features = np.transpose(self.features)
+        #print(self.features.shape)
 
     def Apply_ML(self, estimator_type = 'Lasso', alpha = 0.001): # Apply estimator to get weights of the equation
         self.Fit_estimator(estimator_type = estimator_type, alpha = alpha)
@@ -112,7 +115,7 @@ class Equation:
         self.Evaluate_equation()
         self.Apply_ML()
         
-        
+        #print('Norm of error:', np.linalg.norm(np.dot(self.features, self.weights) - self.target, ord = 2))
         self.fitness_value = 1 / (np.linalg.norm(np.dot(self.features, self.weights) - self.target, ord = 2)) 
         if np.sum(self.weights) == 0:
             self.fitness_value = self.fitness_value * penalty_coeff
