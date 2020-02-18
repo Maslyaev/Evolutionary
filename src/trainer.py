@@ -8,7 +8,7 @@ Created on Tue Feb 18 13:33:54 2020
 
 import numpy as np
 import datetime
-from population import Population
+from src.population import Population
 
 
 def Process_Cell(token_names, **kwargs):   
