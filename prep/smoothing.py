@@ -13,7 +13,7 @@ import numpy as np
 
 def Smoothing(data, kernel_fun, **params):
     smoothed = np.empty(data.shape)
-    if kernel_fun == gaussian_filter:
+    if kernel_fun == 'gaussian':
         for time_idx in np.arange(data.shape[0]):
             smoothed[time_idx, :, :] = gaussian_filter(data[time_idx, :, :], sigma = params['sigma'])
     else:
