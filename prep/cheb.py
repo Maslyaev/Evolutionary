@@ -7,7 +7,7 @@ Created on Thu Feb 13 19:16:50 2020
 """
 
 import numpy as np
-from fin_der import FD_derivatives
+from prep.fin_der import FD_derivatives
 
 def Get_cheb_for_point(matrix, axis, idx, grid, max_der_order = 3, points = 9):
     max_power = max_der_order + 1
