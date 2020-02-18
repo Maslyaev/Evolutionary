@@ -7,9 +7,6 @@ Created on Thu Feb 13 16:33:34 2020
 """
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
-
-
 
 def Slice_Data_3D(matrix, part = 4, part_tuple = None):     # Input matrix slicing for separate domain calculation
     if part_tuple:
@@ -67,19 +64,8 @@ def Encode_Gene(label_dict, variables_names, max_power = 2):
         if variables_names[i] in label_dict:
             for power in range(label_dict[variables_names[i]]):
                 gene[i*max_power + power] = 1
-                
     return gene
 
-
-def Population_Sort(input_popuation):
-    output_population = input_popuation
-    
-    for j in range(1, len(output_population)):
-        key_chromosome = output_population[j]
-        i = j - 1        
-        while i >= 0 and output_population[i].fitness_value > key_chromosome.fitness_value:
-            output_population[i+1] = output_population[i]
-            i = i - 1
-        output_population[i+1] = key_chromosome
-        
-    return list(reversed(output_population))
+def Population_Sort(input_population):
+    pop_sorted = [x for x, _ in sorted(zip(input_population, [individual.fitness_value for individual in input_population]), key=lambda pair: pair[1])]
+    return list(reversed(pop_sorted))
