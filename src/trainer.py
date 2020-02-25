@@ -11,24 +11,25 @@ import datetime
 from src.population import Population
 
 
-def Process_Cell(token_names, **kwargs):   
+def Process_Cell(tokens, token_params, **kwargs):   
     t1 = datetime.datetime.now()
 
     assert 'evaluator' in kwargs.keys() and 'eval_params' in kwargs.keys()
     
     alpha = kwargs['alpha'] if 'alpha' in kwargs.keys() else 0.2
     a_proc = kwargs['a_proc'] if 'a_proc' in kwargs.keys() else 0.2
-    r_crossover = kwargs['r_crossover'] if 'r_crossover' in kwargs.keys() else 0.3 
+    r_crossover = kwargs['r_crossover'] if 'r_crossover' in kwargs.keys() else 0.3
+    r_param_mutation = kwargs['r_param_mutation'] if 'r_param_mutation' in kwargs.keys() else 0.7
     r_mutation = kwargs['r_mutation'] if 'r_mutation' in kwargs.keys() else 0.3 
     mut_chance = kwargs['mut_chance'] if 'mut_chance' in kwargs.keys() else 0.6
     iter_number = kwargs['iter_number'] if 'iter_number' in kwargs.keys() else 100
     pop_size = kwargs['pop_size'] if 'pop_size' in kwargs.keys() else 8
     eq_len = kwargs['eq_len'] if 'eq_len' in kwargs.keys() else 6
     print('in "process cell" function: ', type(token_names), token_names)
-    population = Population(kwargs['evaluator'], kwargs['eval_params'], token_names, 
-                                   pop_size = pop_size, a_proc = a_proc, 
-                                   r_crossover = r_crossover,
-                                   r_mutation=r_mutation, mut_chance = mut_chance, 
+    population = Population(kwargs['evaluator'], kwargs['eval_params'], tokens, token_params,
+                                   pop_size = pop_size, a_proc = a_proc,
+                                   r_crossover = r_crossover, r_param_mutation = r_param_mutation,
+                                   r_mutation=r_mutation, mut_chance = mut_chance,
                                    alpha = alpha, eq_len = eq_len)
 
     best_fitnesses = population.Initiate_Evolution(iter_number = iter_number, estimator_type='Lasso', log_file = None, test_indicators = True)
@@ -44,8 +45,8 @@ def Process_Cell(token_names, **kwargs):
 
 
 class Equation_Trainer:
-    def __init__(self, token_list, evaluator, evaluator_params):
-        self.tokens = token_list
+    def __init__(self, tokens, tokens = token_params, evaluator, evaluator_params):
+        self.tokens = tokens
         self.evaluator = evaluator
         self.evaluator_params = evaluator_params
         self.tuning_grid = None
@@ -65,10 +66,12 @@ class Equation_Trainer:
         if self.tuning_grid: #.any()
     
             use_params = np.vectorize(Process_Cell, excluded = ['token_names', 'evaluator', 'eval_params', 'iter_number'])
-            use_params(token_names = self.tokens, evaluator = self.evaluator, eval_params = self.evaluator_params, iter_number = epochs, 
+            use_params(tokens = self.tokens, token_params = self.token_params,
+                       evaluator = self.evaluator, eval_params = self.evaluator_params, iter_number = epochs, 
                        alpha = self.tuning_grid[self.parameters_order.index('alpha')], 
                        a_proc = self.tuning_grid[self.parameters_order.index('a_proc')], 
                        r_crossover = self.tuning_grid[self.parameters_order.index('r_crossover')], 
+                       r_param_mutation = self.tuning_grid[self.parameters_order.index('r_param_mutation')],
                        r_mutation = self.tuning_grid[self.parameters_order.index('r_mutation')],
                        mut_chance = self.tuning_grid[self.parameters_order.index('mut_chance')],
                        pop_size = self.tuning_grid[self.parameters_order.index('pop_size')],

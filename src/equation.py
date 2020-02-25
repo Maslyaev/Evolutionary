@@ -12,11 +12,8 @@ from src.term import Term
 
 from src.term import Check_Unqueness
 
-def Evaluate_term(term, evaluator, eval_args):
-    return evaluator(term, eval_args)
-
 class Equation:
-    def __init__(self, tokens, evaluator, eval_args, terms_number = 6, max_factors_in_term = 2, max_power = 2): 
+    def __init__(self, tokens, token_params, evaluator, eval_args, terms_number = 6, max_factors_in_term = 2, max_power = 2): 
 
         """
 
@@ -56,7 +53,7 @@ class Equation:
 
         """
 
-        self.tokens = tokens
+        self.tokens = tokens; self.token_params = token_params
         self.evaluator = evaluator; self.eval_args = eval_args
         self.terms = []
         self.terms_number = terms_number; self.max_factors_in_term = max_factors_in_term; self.max_power = max_power
@@ -65,28 +62,31 @@ class Equation:
             raise Exception('Number of terms ({}) is too low to contain all required ones'.format(terms_number))        
             
         basic_terms = [{'1':1}, {'1':1, 'u':1}] #, {'1':1, 'du/dx1':1}, {'1':1, 'du/dx2':1}
-        self.terms.extend([Term(tokens_list=tokens, label_dict = label) for label in basic_terms])
+        self.terms.extend([Term(tokens_list=tokens, token_params = self.token_params, label_dict = label, 
+                                max_factors_in_term = self.max_factors_in_term) for label in basic_terms])
         
         for i in range(2, terms_number):
             print('creating term number', i)
-            new_term = Term(tokens_list=tokens, init_random = True, max_factors_in_term = self.max_factors_in_term, max_power = self.max_power)
+            new_term = Term(tokens_list = self.tokens, token_params = self.token_params, init_random = True, 
+                            max_factors_in_term = self.max_factors_in_term)
 
             while not Check_Unqueness(new_term, self.terms):
                 print('Generationg random term for idx:', i)
-                new_term = Term(tokens_list=tokens, init_random = True, max_factors_in_term = self.max_factors_in_term)
+                new_term = Term(tokens_list = self.tokens, token_params = self.token_params, init_random = True, 
+                                max_factors_in_term = self.max_factors_in_term)
                 print(Check_Unqueness(new_term, self.terms), new_term.gene)
             self.terms.append(new_term)
 
     def Evaluate_equation(self):
         if not 'max_power' in self.eval_args:
             self.eval_args['max_power'] = self.max_power
-        self.target = Evaluate_term(self.terms[self.target_idx], self.evaluator, self.eval_args)
+        self.target = self.terms[self.target_idx].Evaluate(self.evaluator, self.eval_args)
         
         for feat_idx in range(len(self.terms)):
             if feat_idx == 0:
-                self.features = Evaluate_term(self.terms[feat_idx], self.evaluator, self.eval_args)
+                self.features = self.terms[feat_idx].Evaluate(self.evaluator, self.eval_args)
             elif feat_idx != 0 and self.target_idx != feat_idx:
-                temp = Evaluate_term(self.terms[feat_idx], self.evaluator, self.eval_args)
+                temp = self.terms[feat_idx].Evaluate(self.evaluator, self.eval_args)
                 self.features = np.vstack([self.features, temp])
             else:
                 continue
@@ -145,8 +145,13 @@ class Equation:
                 continue
 
       
-    def Mutate(self, mutation_probability = 0.4):
+    def Mutate(self, r_mutation = 0.5, r_param_mutation = 0.5, strict_restrictions):
         for i in range(4, len(self.terms)):
-            if np.random.uniform(0, 1) <= mutation_probability and i != self.target_idx:
-                self.terms[i].Mutate(self.terms[:i] + self.terms[i+1:], self.allowed_derivs)
+            if np.random.uniform(0, 1) <= r_mutation and i != self.target_idx:
+                if np.random.random() < 1/pow(len(self.token_params), 2): # Сомнительная эвристика
+                    self.terms[i] = Term(tokens_list = self.tokens, token_params = self.token_params, init_random = True,
+                              max_factors_in_term = self.max_factors_in_term)
+                else:
+                    self.terms[i].Mutate_parameters(r_param_mutation = r_param_mutation, strict_restrictions = strict_restrictions)
+                
         self.Calculate_Fitness()

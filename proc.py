@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
 Created on Fri Feb 14 13:11:46 2020
 
@@ -7,6 +8,8 @@ Created on Fri Feb 14 13:11:46 2020
 """
 
 import numpy as np
+import collections
+
 from src.supplementary import Define_Derivatives
 from src.term import normalize_ts, Term
 from src.trainer import Equation_Trainer
@@ -34,16 +37,17 @@ if __name__ == '__main__':
     variables[1, :] = u_initial
     for i_outer in range(0, derivatives.shape[1]):
         variables[i_outer+2] = derivatives[:, i_outer].reshape(variables[i_outer+2].shape) 
-        
+                
     skipped_elems = 15
     
     timeslice = (skipped_elems, -skipped_elems)
     
     token_names = Define_Derivatives(u_initial.ndim, max_order = 2)
     print(token_names)
+    token_parameters = collections.OrderedDict([('power', (0, 3))])
     variables = variables[:, timeslice[0]:timeslice[1], skipped_elems:-skipped_elems, skipped_elems:-skipped_elems]
         
     Trainer = Equation_Trainer(token_list=token_names, evaluator = derivative_evaluator, evaluator_params={'token_matrices':variables})
-    Trainer.Parameters_grid(('alpha', 'a_proc', 'r_crossover', 'r_mutation', 'mut_chance', 'pop_size', 'eq_len'), (1., 10., 5), 0.2, 0.6, 0.5, 1.0, 10, 6)
+    Trainer.Parameters_grid(('alpha', 'a_proc', 'r_crossover', 'r_param_mutation', 'r_mutation', 'mut_chance', 'pop_size', 'eq_len'), (1., 10., 5), 0.2, 0.6, 0.8, 0.5, 0.8, 10, 6)
     Trainer.Train(epochs = 200)
     
