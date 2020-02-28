@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
 Created on Fri Feb 14 13:11:46 2020
 
@@ -34,7 +35,7 @@ if __name__ == '__main__':
     variables[1, :] = u_initial
     for i_outer in range(0, derivatives.shape[1]):
         variables[i_outer+2] = derivatives[:, i_outer].reshape(variables[i_outer+2].shape) 
-        
+                
     skipped_elems = 15
     
     timeslice = (skipped_elems, -skipped_elems)

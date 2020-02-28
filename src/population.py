@@ -29,12 +29,18 @@ class Population:
         self.max_power = max_power
 
         self.pop_size = pop_size
-        self.population = [Equation(self.tokens, evaluator, eval_params, eq_len, max_factors_in_terms) for i in range(pop_size)]
-        print(self.population[0].terms[0].gene, self.population[0].terms[1].gene, self.population[0].terms[5].gene)
+        self.population = [Equation(self.tokens, evaluator, eval_params, self.alpha, eq_len, max_factors_in_terms) for i in range(pop_size)]
+        #print(self.population[0].terms[0].gene, self.population[0].terms[1].gene, self.population[0].terms[5].gene)
         #time.sleep(15)
         for eq in self.population:
             eq.Split_data()
             eq.Calculate_Fitness()
+
+        print('Population for evolutionary algorithm initialized')
+        print('Values of main selected parameters:')
+        print('population size:', self.pop_size, ', r_crossover:', self.crossover_probability, ', r_mutation:', self.mutation_probability)
+        print('Alpha:', self.alpha)
+        
 
     def Genetic_Iteration(self, estimator_type, elitism = 1):
         self.population = Population_Sort(self.population)
@@ -62,14 +68,12 @@ class Population:
     def Initiate_Evolution(self, iter_number, estimator_type, log_file = None, test_indicators = False):
         self.fitness_values = np.empty(iter_number)
         for idx in range(iter_number):
-            print('iteration %3d' % idx)
             self.Genetic_Iteration(estimator_type = estimator_type)
             self.population = Population_Sort(self.population)
             self.fitness_values[idx]= self.population[0].fitness_value
             if log_file: log_file.Write_apex(self.population[0], idx)
             if test_indicators: 
-                print(self.population[0].fitness_value, self.population[1].fitness_value, self.population[-1].fitness_value)
-                print(self.population[0].terms[self.population[0].target_idx].gene)
+                print('Iteration ', idx, ': achieved fitness:', self.population[0].fitness_value)                
         return self.fitness_values
 
     def Calculate_True_Weights(self, evaluator, eval_params):
@@ -121,7 +125,7 @@ def Tournament_crossover(population, part_with_offsprings, tokens,
 
 def Get_true_coeffs(evaluator, eval_params, tokens, equation, max_power = 2):
     target = equation.terms[equation.target_idx]
-    print('Target key:', Decode_Gene(target.gene, tokens, max_power))
+#    print('Target key:', Decode_Gene(target.gene, tokens, max_power))
 
     target_vals = Evaluate_term(target, evaluator, eval_params)    
 #    target_vals = np.copy(variables[0])

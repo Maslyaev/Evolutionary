@@ -24,14 +24,14 @@ def Process_Cell(token_names, **kwargs):
     iter_number = kwargs['iter_number'] if 'iter_number' in kwargs.keys() else 100
     pop_size = kwargs['pop_size'] if 'pop_size' in kwargs.keys() else 8
     eq_len = kwargs['eq_len'] if 'eq_len' in kwargs.keys() else 6
-    print('in "process cell" function: ', type(token_names), token_names)
+    print('running algorithm with tokens:', token_names)
     population = Population(kwargs['evaluator'], kwargs['eval_params'], token_names, 
                                    pop_size = pop_size, a_proc = a_proc, 
                                    r_crossover = r_crossover,
                                    r_mutation=r_mutation, mut_chance = mut_chance, 
                                    alpha = alpha, eq_len = eq_len)
 
-    best_fitnesses = population.Initiate_Evolution(iter_number = iter_number, estimator_type='Lasso', log_file = None, test_indicators = True)
+    best_fitnesses = population.Initiate_Evolution(iter_number = iter_number, estimator_type='Lasso', log_file = None, test_indicators = False)
     
     print('Achieved best fitness:', best_fitnesses[-1])
     
@@ -63,9 +63,9 @@ class Equation_Trainer:
     
     def Train(self, epochs, parameters_order = None, parameters = None):
         if self.tuning_grid: #.any()
-    
-            use_params = np.vectorize(Process_Cell, excluded = ['token_names', 'evaluator', 'eval_params', 'iter_number'])
-            use_params(token_names = self.tokens, evaluator = self.evaluator, eval_params = self.evaluator_params, iter_number = epochs, 
+            print('Using parameters from grid')
+            use_params = np.vectorize(Process_Cell, otypes = [None], excluded = ['token_names', 'evaluator', 'eval_params', 'iter_number'])
+            self.fitnesses = use_params(token_names = self.tokens, evaluator = self.evaluator, eval_params = self.evaluator_params, iter_number = epochs, 
                        alpha = self.tuning_grid[self.parameters_order.index('alpha')], 
                        a_proc = self.tuning_grid[self.parameters_order.index('a_proc')], 
                        r_crossover = self.tuning_grid[self.parameters_order.index('r_crossover')], 
@@ -74,12 +74,14 @@ class Equation_Trainer:
                        pop_size = self.tuning_grid[self.parameters_order.index('pop_size')],
                        eq_len = self.tuning_grid[self.parameters_order.index('eq_len')])
         elif parameters: # .any()
-            Process_Cell(token_names = self.tokens, evaluator = self.evaluator, eval_params = self.evaluator_params, iter_number = epochs, 
+            print('Using single vector of parameters')     
+            print(parameters_order)
+            self.fitnesses = Process_Cell(token_names = self.tokens, evaluator = self.evaluator, eval_params = self.evaluator_params, iter_number = epochs, 
                        alpha = parameters[parameters_order.index('alpha')], 
                        a_proc = parameters[parameters_order.index('a_proc')], 
                        r_crossover = parameters[parameters_order.index('r_crossover')], 
                        r_mutation = parameters[parameters_order.index('r_mutation')],
-                       mut_chance = self.tuning_grid[self.parameters_order.index('mut_chance')],
+                       mut_chance = parameters[parameters_order.index('mut_chance')],
                        pop_size = parameters[parameters_order.index('pop_size')],
                        eq_len = parameters[parameters_order.index('eq_len')])
         else:

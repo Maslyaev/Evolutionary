@@ -16,7 +16,7 @@ def Evaluate_term(term, evaluator, eval_args):
     return evaluator(term, eval_args)
 
 class Equation:
-    def __init__(self, tokens, evaluator, eval_args, terms_number = 6, max_factors_in_term = 2, max_power = 2): 
+    def __init__(self, tokens, evaluator, eval_args, alpha = 1, terms_number = 6, max_factors_in_term = 2, max_power = 2): 
 
         """
 
@@ -56,6 +56,8 @@ class Equation:
 
         """
 
+        self.alpha = alpha
+
         self.tokens = tokens
         self.evaluator = evaluator; self.eval_args = eval_args
         self.terms = []
@@ -68,13 +70,11 @@ class Equation:
         self.terms.extend([Term(tokens_list=tokens, label_dict = label) for label in basic_terms])
         
         for i in range(2, terms_number):
-            print('creating term number', i)
             new_term = Term(tokens_list=tokens, init_random = True, max_factors_in_term = self.max_factors_in_term, max_power = self.max_power)
 
             while not Check_Unqueness(new_term, self.terms):
-                print('Generationg random term for idx:', i)
                 new_term = Term(tokens_list=tokens, init_random = True, max_factors_in_term = self.max_factors_in_term)
-                print(Check_Unqueness(new_term, self.terms), new_term.gene)
+                #print(Check_Unqueness(new_term, self.terms), new_term.gene)
             self.terms.append(new_term)
 
     def Evaluate_equation(self):
@@ -93,16 +93,16 @@ class Equation:
         self.features = np.transpose(self.features)
         #print(self.features.shape)
 
-    def Apply_ML(self, estimator_type = 'Lasso', alpha = 0.001): # Apply estimator to get weights of the equation
-        self.Fit_estimator(estimator_type = estimator_type, alpha = alpha)
+    def Apply_ML(self, estimator_type = 'Lasso'): # Apply estimator to get weights of the equation
+        self.Fit_estimator(estimator_type = estimator_type)
             
         
-    def Fit_estimator(self, estimator_type = 'Ridge', alpha = 0.001): # Fitting selected estimator
+    def Fit_estimator(self, estimator_type = 'Ridge'): # Fitting selected estimator
         if estimator_type == 'Lasso':
-            self.estimator = Lasso(alpha = alpha)
+            self.estimator = Lasso(alpha = self.alpha)
             self.estimator.fit(self.features, self.target) 
         elif estimator_type == 'Ridge':
-            self.estimator = Ridge(alpha = alpha)
+            self.estimator = Ridge(alpha = self.alpha)
             self.estimator.fit(self.features, self.target) 
         else:
             self.estimator = LinearRegression()

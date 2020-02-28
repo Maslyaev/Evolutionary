@@ -16,7 +16,6 @@ from prep.smoothing import Smoothing
 def Preprocess_derivatives(field, output_file_name = None, mp_poolsize = 4, max_order = 2, polynomial_window = 8, polynomial_boundary = 5):
     t1 = datetime.datetime.now()
 
-    print('Executing on grid with uniform nodes:')
     dim_coords = []
     for dim in np.arange(np.ndim(field)):
         dim_coords.append(np.linspace(0, field.shape[dim]-1, field.shape[dim]))
