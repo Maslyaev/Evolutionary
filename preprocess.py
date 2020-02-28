@@ -10,7 +10,12 @@ import numpy as np
 from prep.derivatives import Preprocess_derivatives
 
 if __name__ == "__main__":
-    op_file_name = 'Preprocessing/Test.npy'; filename = 'Preprocessing/ssh_field.npy' 
+    op_file_name = 'Preprocessing/Derivatives.npy'; filename = 'Preprocessing/Wave_201x201x201.csv' 
 
-    field = np.load(filename)
+    if 'npy' in filename:
+        field = np.load(filename)
+    else:
+        shape = (201, 201, 201)
+        field = np.loadtxt(filename)
+        field = field.reshape(shape)
     Preprocess_derivatives(field, op_file_name, mp_poolsize=24)

@@ -11,41 +11,29 @@ import copy
 from sklearn.linear_model import LinearRegression
 
 from src.term import Check_Unqueness
-from src.equation import Equation, Evaluate_term
+from src.equation import Equation
 from src.supplementary import *
 
 class Population:
-    def __init__(self, evaluator, eval_params, tokens, pop_size, a_proc,
-                 r_crossover, r_mutation, mut_chance, alpha, eq_len = 8, max_factors_in_terms = 2, max_power = 2): 
+    def __init__(self, evaluator, eval_params, tokens, token_params, pop_size, basic_terms, a_proc,
+                 r_crossover, r_param_mutation, r_mutation, mut_chance, alpha, eq_len = 8, max_factors_in_terms = 3): 
         
-#        print('in population: evaluator:', type(evaluator), evaluator)
-#        print('in population: tokens:', type(tokens), tokens)
-        self.tokens = tokens
+        self.tokens = tokens; self.token_params = token_params
         
         self.part_with_offsprings = a_proc
-        self.crossover_probability = r_crossover
-        self.mutation_probability = r_mutation; self.mut_chance = mut_chance
-        self.alpha = alpha
-        self.max_power = max_power
+        self.crossover_probability = r_crossover; self.r_param_mutation = r_param_mutation
+        self.r_mutation = r_mutation; self.mut_chance = mut_chance
+        self.n_params = len(list(token_params.keys()))
 
         self.pop_size = pop_size
-        self.population = [Equation(self.tokens, evaluator, eval_params, eq_len, max_factors_in_terms) for i in range(pop_size)]
-        print(self.population[0].terms[0].gene, self.population[0].terms[1].gene, self.population[0].terms[5].gene)
-        #time.sleep(15)
+        self.population = [Equation(self.tokens, self.token_params, evaluator, eval_params, basic_terms, alpha, eq_len, max_factors_in_terms) for i in range(pop_size)]
         for eq in self.population:
             eq.Split_data()
             eq.Calculate_Fitness()
 
-    def Genetic_Iteration(self, estimator_type, elitism = 1):
+    def Genetic_Iteration(self, estimator_type, elitism = 1, strict_restrictions = True):
         self.population = Population_Sort(self.population)
         self.population = self.population[:self.pop_size]
-#        for idx in range(len(self.population[0].terms)):
-#            if idx < self.population[0].target_idx:
-#                print(self.population[0].terms[idx].gene, self.population[0].weights[idx])
-#            elif idx == self.population[0].target_idx:
-#                print(self.population[0].terms[idx].gene, 1)
-#            else:
-#                print(self.population[0].terms[idx].gene, self.population[0].weights[idx-1])
                 
         children = Tournament_crossover(self.population, self.part_with_offsprings, self.tokens, 
                                         crossover_probability = self.crossover_probability)
@@ -56,14 +44,16 @@ class Population:
 
         for i in range(elitism, len(self.population)):
             if np.random.random() <= self.mut_chance:
-                self.population[i].Mutate(mutation_probability = self.mutation_probability)
+                self.population[i].Mutate(r_mutation = self.r_mutation, 
+                               r_param_mutation = self.r_param_mutation, strict_restrictions = strict_restrictions)
 
 
     def Initiate_Evolution(self, iter_number, estimator_type, log_file = None, test_indicators = False):
         self.fitness_values = np.empty(iter_number)
         for idx in range(iter_number):
             print('iteration %3d' % idx)
-            self.Genetic_Iteration(estimator_type = estimator_type)
+            strict_restrictions = False if idx < iter_number - 1 else True
+            self.Genetic_Iteration(estimator_type = estimator_type, strict_restrictions = strict_restrictions)
             self.population = Population_Sort(self.population)
             self.fitness_values[idx]= self.population[0].fitness_value
             if log_file: log_file.Write_apex(self.population[0], idx)
@@ -77,9 +67,10 @@ class Population:
         self.population = self.population[:self.pop_size]
         print('Final gene:', self.population[0].terms[self.population[0].target_idx].gene)
         print(self.population[0].fitness_value, Decode_Gene(self.population[0].terms[self.population[0].target_idx].gene,
-              self.tokens, self.max_power))
+              self.tokens, list(self.token_params.keys()), self.n_params))
         print('weights:', self.population[0].weights)       
-        self.target_term, self.zipped_list = Get_true_coeffs(evaluator, eval_params, self.tokens, self.population[0], self.max_power)  
+        self.target_term, self.zipped_list = Get_true_coeffs(evaluator, eval_params, self.tokens, list(self.token_params.keys()),
+                                                              self.population[0], self.n_params)  
         
 def Crossover(equation_1, equation_2, tokens, crossover_probability = 0.1):
 
@@ -119,16 +110,11 @@ def Tournament_crossover(population, part_with_offsprings, tokens,
     return children        
 
 
-def Get_true_coeffs(evaluator, eval_params, tokens, equation, max_power = 2):
+def Get_true_coeffs(evaluator, eval_params, tokens, token_params, equation, n_params = 2):
     target = equation.terms[equation.target_idx]
-    print('Target key:', Decode_Gene(target.gene, tokens, max_power))
+    print('Target key:', Decode_Gene(target.gene, tokens, token_params, n_params))
 
-    target_vals = Evaluate_term(target, evaluator, eval_params)    
-#    target_vals = np.copy(variables[0])
-#    for idx in range(0, target.gene.size, target.max_power):
-#        target_vals *= variables[int(idx/target.max_power)] ** np.sum(target.gene[idx : idx + target.max_power])
-#    target_vals = np.reshape(target_vals, np.prod(target_vals.shape))
-
+    target_vals = target.Evaluate(evaluator, eval_params)    
     features_list = []
     features_list_labels = []
     for i in range(len(equation.terms)):
@@ -136,19 +122,11 @@ def Get_true_coeffs(evaluator, eval_params, tokens, equation, max_power = 2):
             continue
         idx = i if i < equation.target_idx else i-1
         if equation.weights[idx] != 0:
-            features_list_labels.append(Decode_Gene(equation.terms[i].gene, tokens, max_power))
-#            feature_vals = np.copy(variables[0])
-#            
-#            for gene_idx in range(0, equation.terms[i].gene.size, equation.terms[i].max_power):
-#                feature_vals *= (variables[int(gene_idx/equation.terms[i].max_power)] ** 
-#                                          np.sum(equation.terms[i].gene[gene_idx : gene_idx + equation.terms[i].max_power]))
-#            
-#            feature_vals = np.reshape(feature_vals, np.prod(feature_vals.shape))
-            
-            features_list.append(Evaluate_term(equation.terms[i], evaluator, eval_params) )
+            features_list_labels.append(Decode_Gene(equation.terms[i].gene, tokens, token_params, n_params))
+            features_list.append(equation.terms[i].Evaluate(evaluator, eval_params) )
 
     if len(features_list) == 0:
-        return Decode_Gene(target.gene, tokens, max_power), [('0', 1)]
+        return Decode_Gene(target.gene, tokens, token_params, n_params), [('0', 1)]
     
     features = features_list[0]
     if len(features_list) > 1:
@@ -163,4 +141,4 @@ def Get_true_coeffs(evaluator, eval_params, tokens, equation, max_power = 2):
         features = features.reshape(-1, 1)
         estimator.fit(features, target_vals)
     weights = estimator.coef_
-    return Decode_Gene(target.gene, tokens, max_power), list(zip(features_list_labels, weights))    
+    return Decode_Gene(target.gene, tokens, token_params, n_params), list(zip(features_list_labels, weights))    

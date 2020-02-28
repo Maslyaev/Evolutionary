@@ -49,21 +49,25 @@ def Prepare_Data_matrixes(raw_matrix, dim_info):
     return resulting_matrix 
 
 
-def Decode_Gene(gene, variables_names, max_power = 2):
+def Decode_Gene(gene, token_names, parameter_labels, n_params = 2):
     term_dict = {}
-    for i in range(0, gene.shape[0], max_power):
-        term_dict[variables_names[int(i/max_power)]] = int(np.sum(gene[i:i+max_power]))
+    for token_idx in range(0, gene.shape[0], n_params):
+        term_params = {}#coll.OrderedDict()
+        for param_idx in range(0, n_params):
+            term_params[parameter_labels[param_idx]] = gene[token_idx*n_params + param_idx]    
+        term_dict[token_names[int(token_idx/n_params)]] = term_params
     return term_dict
 
 
-def Encode_Gene(label_dict, variables_names, max_power = 2):
+def Encode_Gene(label_dict, token_names, parameter_labels, n_params = 2):
 #    print(type(variables_names), variables_names)
-    gene = np.zeros(shape = len(variables_names) * max_power)
+    gene = np.zeros(shape = len(token_names) * n_params)
 
-    for i in range(len(variables_names)):
-        if variables_names[i] in label_dict:
-            for power in range(label_dict[variables_names[i]]):
-                gene[i*max_power + power] = 1
+    for i in range(len(token_names)):
+        if token_names[i] in label_dict:
+            #print(token_names, label_dict[token_names[i]])
+            for key, value in label_dict[token_names[i]].items():
+                gene[i*n_params + parameter_labels.index(key)] = value
     return gene
 
 def Population_Sort(input_population):
