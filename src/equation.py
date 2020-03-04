@@ -59,11 +59,9 @@ class Equation:
         self.evaluator = evaluator; self.eval_args = eval_args
         self.terms = []
         self.terms_number = terms_number; self.max_factors_in_term = max_factors_in_term
-        #print('terms_number', terms_number)
         if (terms_number <= 5): 
             raise Exception('Number of terms ({}) is too low to contain all required ones'.format(terms_number))        
             
-        #basic_terms = [{'1':{'power':1}}, {'1':{'power':1}, 'u':{'power':1}}] #, {'1':1, 'du/dx1':1}, {'1':1, 'du/dx2':1}
         self.terms.extend([Term(tokens=tokens, token_params = self.token_params, label_dict = label, 
                                 max_factors_in_term = self.max_factors_in_term) for label in basic_terms])
         
@@ -74,17 +72,16 @@ class Equation:
             while not Check_Unqueness(new_term, self.terms):
                 new_term = Term(tokens = self.tokens, token_params = self.token_params, init_random = True, 
                                 max_factors_in_term = self.max_factors_in_term)
-                print(Check_Unqueness(new_term, self.terms), new_term.gene)
             self.terms.append(new_term)
 
     def Evaluate_equation(self):
-        self.target = self.terms[self.target_idx].Evaluate(self.evaluator, self.eval_args)
+        self.target = self.terms[self.target_idx].Evaluate(self.evaluator, True, self.eval_args)
         
         for feat_idx in range(len(self.terms)):
             if feat_idx == 0:
-                self.features = self.terms[feat_idx].Evaluate(self.evaluator, self.eval_args)
+                self.features = self.terms[feat_idx].Evaluate(self.evaluator, True, self.eval_args)
             elif feat_idx != 0 and self.target_idx != feat_idx:
-                temp = self.terms[feat_idx].Evaluate(self.evaluator, self.eval_args)
+                temp = self.terms[feat_idx].Evaluate(self.evaluator, True, self.eval_args)
                 self.features = np.vstack([self.features, temp])
             else:
                 continue
@@ -97,7 +94,9 @@ class Equation:
         
     def Fit_estimator(self, estimator_type = 'Ridge'): # Fitting selected estimator
         if estimator_type == 'Lasso':
-            self.estimator = Lasso(alpha = self.alpha)
+            self.estimator = Lasso(alpha = self.alpha, copy_X=True, fit_intercept=True, max_iter=1000,
+                                   normalize=False, positive=False, precompute=False, random_state=None,
+                                   selection='cyclic', tol=0.0001, warm_start=False)
             self.estimator.fit(self.features, self.target) 
         elif estimator_type == 'Ridge':
             self.estimator = Ridge(alpha = self.alpha)
@@ -112,9 +111,8 @@ class Equation:
         # Evaluate target & features
         self.Evaluate_equation()
         self.Apply_ML()
-        
-        #print('Norm of error:', np.linalg.norm(np.dot(self.features, self.weights) - self.target, ord = 2))
-        self.fitness_value = 1 / (np.linalg.norm(np.dot(self.features, self.weights) - self.target, ord = 2)) 
+        self.fitness_value = 1 / (np.linalg.norm(np.dot(self.features, self.weights) - self.target, ord = 2) + 
+                                  self.alpha * np.linalg.norm(self.weights, ord = 1)) 
         if np.sum(self.weights) == 0:
             self.fitness_value = self.fitness_value * penalty_coeff
         return self.fitness_value
@@ -143,17 +141,20 @@ class Equation:
             else:
                 continue
 
-      
     def Mutate(self, r_mutation = 0.5, r_param_mutation = 0.5, strict_restrictions = False):
+        power_idx = list(self.terms[self.target_idx].token_params.keys()).index('power')
+        forbidden_tokens = np.nonzero([self.terms[self.target_idx].gene[idx*self.terms[self.target_idx].n_params + power_idx] for 
+                                       idx in np.arange(len(self.tokens))])[0]
+        #print('tokens in target:', forbidden_tokens)
         for i in range(self.n_immutable, len(self.terms)):
             if np.random.uniform(0, 1) <= r_mutation and i != self.target_idx:
                 if np.random.random() < 1/pow(len(self.token_params), 2): # Сомнительная эвристика
                     new_term = Term(tokens = self.tokens, token_params = self.token_params, init_random = True, 
-                                    max_factors_in_term = self.max_factors_in_term)
+                                    max_factors_in_term = self.max_factors_in_term, forbidden_tokens = forbidden_tokens)
         
                     while not Check_Unqueness(new_term, self.terms[:i] + self.terms[i+1:]):
                         new_term = Term(tokens = self.tokens, token_params = self.token_params, init_random = True, 
-                                        max_factors_in_term = self.max_factors_in_term)
+                                        max_factors_in_term = self.max_factors_in_term, forbidden_tokens = forbidden_tokens)
                     self.terms[i] = new_term
                 else:
                     self.terms[i].Mutate_parameters(r_param_mutation = r_param_mutation, strict_restrictions = strict_restrictions)

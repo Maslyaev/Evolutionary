@@ -51,32 +51,31 @@ class Population:
     def Initiate_Evolution(self, iter_number, estimator_type, log_file = None, test_indicators = False):
         self.fitness_values = np.empty(iter_number)
         for idx in range(iter_number):
-            print('iteration %3d' % idx)
             strict_restrictions = False if idx < iter_number - 1 else True
             self.Genetic_Iteration(estimator_type = estimator_type, strict_restrictions = strict_restrictions)
             self.population = Population_Sort(self.population)
             self.fitness_values[idx]= self.population[0].fitness_value
             if log_file: log_file.Write_apex(self.population[0], idx)
             if test_indicators: 
-                print(self.population[0].fitness_value, self.population[1].fitness_value, self.population[-1].fitness_value)
-                print(self.population[0].terms[self.population[0].target_idx].gene)
+                print('iteration %3d' % idx)
+                print('best fitness:', self.population[0].fitness_value, ', worst_fitness', self.population[-1].fitness_value)
+                print('gene of target term:', self.population[0].terms[self.population[0].target_idx].gene)
+                print('weights:', self.population[0].weights)
         return self.fitness_values
 
     def Calculate_True_Weights(self, evaluator, eval_params):
         self.population = Population_Sort(self.population)
         self.population = self.population[:self.pop_size]
-        print('Final gene:', self.population[0].terms[self.population[0].target_idx].gene)
-        print(self.population[0].fitness_value, Decode_Gene(self.population[0].terms[self.population[0].target_idx].gene,
-              self.tokens, list(self.token_params.keys()), self.n_params))
-        print('weights:', self.population[0].weights)       
+#        print('Final gene:', self.population[0].terms[self.population[0].target_idx].gene)
+#        print(self.population[0].fitness_value, Decode_Gene(self.population[0].terms[self.population[0].target_idx].gene,
+#              self.tokens, list(self.token_params.keys()), self.n_params))
+#        print('weights:', self.population[0].weights)       
         self.target_term, self.zipped_list = Get_true_coeffs(evaluator, eval_params, self.tokens, list(self.token_params.keys()),
                                                               self.population[0], self.n_params)  
         
 def Crossover(equation_1, equation_2, tokens, crossover_probability = 0.1):
-
     if len(equation_1.terms) != len(equation_2.terms):
         raise IndexError('Equations have diffferent number of terms')
-
     result_equation_1 = copy.deepcopy(equation_1) #Equation(variables, variables_names, terms_number = len(equation_1.terms))
     result_equation_2 = copy.deepcopy(equation_2) #Equation(variables, variables_names, terms_number = len(equation_2.terms))      
 
@@ -112,9 +111,8 @@ def Tournament_crossover(population, part_with_offsprings, tokens,
 
 def Get_true_coeffs(evaluator, eval_params, tokens, token_params, equation, n_params = 2):
     target = equation.terms[equation.target_idx]
-    print('Target key:', Decode_Gene(target.gene, tokens, token_params, n_params))
 
-    target_vals = target.Evaluate(evaluator, eval_params)    
+    target_vals = target.Evaluate(evaluator, False, eval_params)    
     features_list = []
     features_list_labels = []
     for i in range(len(equation.terms)):
@@ -123,7 +121,7 @@ def Get_true_coeffs(evaluator, eval_params, tokens, token_params, equation, n_pa
         idx = i if i < equation.target_idx else i-1
         if equation.weights[idx] != 0:
             features_list_labels.append(Decode_Gene(equation.terms[i].gene, tokens, token_params, n_params))
-            features_list.append(equation.terms[i].Evaluate(evaluator, eval_params) )
+            features_list.append(equation.terms[i].Evaluate(evaluator, False, eval_params))
 
     if len(features_list) == 0:
         return Decode_Gene(target.gene, tokens, token_params, n_params), [('0', 1)]

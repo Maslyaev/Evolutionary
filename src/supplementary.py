@@ -49,7 +49,7 @@ def Prepare_Data_matrixes(raw_matrix, dim_info):
     return resulting_matrix 
 
 
-def Decode_Gene(gene, token_names, parameter_labels, n_params = 2):
+def Decode_Gene(gene, token_names, parameter_labels, n_params = 1):
     term_dict = {}
     for token_idx in range(0, gene.shape[0], n_params):
         term_params = {}#coll.OrderedDict()
@@ -59,7 +59,7 @@ def Decode_Gene(gene, token_names, parameter_labels, n_params = 2):
     return term_dict
 
 
-def Encode_Gene(label_dict, token_names, parameter_labels, n_params = 2):
+def Encode_Gene(label_dict, token_names, parameter_labels, n_params = 1):
 #    print(type(variables_names), variables_names)
     gene = np.zeros(shape = len(token_names) * n_params)
 

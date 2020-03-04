@@ -10,7 +10,7 @@ import numpy as np
 from prep.derivatives import Preprocess_derivatives
 
 if __name__ == "__main__":
-    op_file_name = 'Preprocessing/Derivatives.npy'; filename = 'Preprocessing/Wave_201x201x201.csv' 
+    op_file_name = 'Preprocessing/Derivatives.npy'; filename = 'Preprocessing/wave_HP.npy' 
 
     if 'npy' in filename:
         field = np.load(filename)
@@ -18,4 +18,5 @@ if __name__ == "__main__":
         shape = (201, 201, 201)
         field = np.loadtxt(filename)
         field = field.reshape(shape)
+    field = np.transpose(field, (2, 0, 1))
     Preprocess_derivatives(field, op_file_name, mp_poolsize=24)

@@ -19,7 +19,7 @@ def Check_Unqueness(term, equation):
     else:
         return not any([all(term == equation_term.gene) for equation_term in equation])
 
-def normalize_ts(Input):    # Normalization of data time-frame
+def normalize_ts_old(Input):    # Normalization of data time-frame
     Matrix = np.copy(Input)
     for i in np.arange(Matrix.shape[0]):
         norm  = np.abs(np.max(np.abs(Matrix[i, :])))
@@ -30,9 +30,21 @@ def normalize_ts(Input):    # Normalization of data time-frame
     return Matrix
 
 
+def normalize_ts(Input):    # Normalization of data time-frame
+    Matrix = np.copy(Input)
+    for i in np.arange(Matrix.shape[0]):
+        #norm  = np.abs(np.max(np.abs(Matrix[i, :])))
+        std = np.std(Matrix[i])
+        if std != 0:
+            Matrix[i] = (Matrix[i] - np.mean(Matrix[i])) / std
+        else:
+            Matrix[i] = 1
+    return Matrix
+
+
 class Term:
     def __init__(self, tokens, gene = None, token_params = collections.OrderedDict([('power', (0, 4))]), # = ['1', 'u']
-                 init_random = False, label_dict = None, max_factors_in_term = 2):
+                 init_random = False, label_dict = None, max_factors_in_term = 2, forbidden_tokens = None):
 
         """
         Class for the possible terms of the PDE, contating both packed symbolic form, and values on the grid;
@@ -56,7 +68,7 @@ class Term:
             
             init_random : boolean, base value of False \r\n
             False, if the gene is created by passed label_dict, or gene. If True, than the gene is randomly generated, according to the parameters of max_power
-            and max_factors_in_term;
+            and max_factors_in_term;                    print('examining tokens:', forbidden_token, forbidden)       
             
             label_dict : dictionary \r\n
             Dictionary, containing information about the term: key - string of function symbolic form, value - power; 
@@ -76,7 +88,7 @@ class Term:
         self.label_dict = label_dict
 
         if init_random:
-            self.Randomize_Gene(constant_token = self.tokens[0]) 
+            self.Randomize_Gene(constant_token = self.tokens[0], forbidden = forbidden_tokens) 
         else:    
             if type(gene) == np.ndarray:
                 self.gene = gene
@@ -86,23 +98,31 @@ class Term:
     
 #    def Determined_Gene()
     
-    def Randomize_Gene(self, constant_token = '1'): # Разобраться с коидровкой
+    def Randomize_Gene(self, constant_token = '1', forbidden = None): # Разобраться с коидровкой
         self.label_dict = {}
         for token in self.tokens:
             term_params = {}
             for key, value in self.token_params.items():
                 term_params[key] = 0
-                    
             self.label_dict[token] = term_params
             
         factor_num = np.random.randint(low = 1, high = self.max_factors_in_term + 1)
-#        print('Creating random gene with ', factor_num, 'factors')
-        
         
         self.label_dict[constant_token]['power'] = 1
         non_constant_tokens = list(self.label_dict.keys())
         non_constant_tokens.remove(constant_token)
         
+        NoneType = type(None)
+        if type(forbidden) != NoneType:
+            forbidden = np.delete(forbidden, 0)
+            for forbidden_token in forbidden:
+                #print('examining tokens:', self.tokens[forbidden_token], non_constant_tokens)       
+                try:
+                    non_constant_tokens.remove(self.tokens[forbidden_token])             
+                except ValueError:
+                    continue        
+            #print('after purge:', non_constant_tokens)
+
         for factor_idx in range(factor_num):
             while True:
                 key = np.random.choice(non_constant_tokens)
@@ -119,10 +139,8 @@ class Term:
                     self.label_dict[token][param] = np.random.randint(self.token_params[param][0], self.token_params[param][1]) 
                 else:
                     self.label_dict[token][param] = self.token_params[param][0] + np.random.random()*(self.token_params[param][1] - self.token_params[param][0])
-        
-#        print(self.label_dict)
+
         self.gene = Encode_Gene(self.label_dict, self.tokens, list(self.token_params.keys()), self.n_params)
-        #print(factor_num, self.gene)
 
     def Remove_Dublicated_Factors(self, allowed_tokens, background_terms): # Переписать
         gene_cleared = np.copy(self.gene)
@@ -141,12 +159,8 @@ class Term:
         clearing_iterations = 0 
         while True:
             gene_filled = np.copy(gene_cleared) 
-#            
-#            if clearing_iterations == 10 or clearing_iterations == 100:
-#                factors_cleared += 1
-#            print('Cleared factors:', factors_cleared)
+
             for i in range(factors_cleared):
-#                print(allowed)
                 selected_idx = np.random.choice(allowed)
                 gene_filled[selected_idx*self.n_params + list(self.token_params.keys()).index('power')] += 1
                 if gene_filled[selected_idx*self.n_params + list(self.token_params.keys()).index('power')] == self.token_params['power'][1]:
@@ -185,6 +199,7 @@ class Term:
                     gene_temp[gene_idx] += shift
         self.gene = gene_temp
         self.label_dict = Decode_Gene(self.gene, self.tokens, list(self.token_params.keys()), self.n_params)
+    
     
     def Mutate_old_like(self, background_terms, allowed_factors, reverse_mutation_prob = 0.1):
         allowed = list(np.nonzero(allowed_factors)[0])        
@@ -300,5 +315,5 @@ class Term:
                 self.gene = mutated_gene
                 return            
         
-    def Evaluate(self, evaluator, eval_params):
-        return evaluator(self.gene, eval_params)
+    def Evaluate(self, evaluator, normalize, eval_params):
+        return evaluator(self.gene, normalize, eval_params)
